@@ -1,17 +1,22 @@
-import React, {useState} from 'react';
+import React from 'react';
 import './App.scss';
+import { Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
+import ReadingNow from './components/ReadingNow';
 
 const App = () => {
-  const [count, setCount] = useState(0);
   return (
-    <div className="app">
-      <header className="app-header">
-        <p>Hello Vite + React!</p>
-        <p onClick={() => setCount(c => c + 1)}>
-          <button>count is: {count}</button>
-        </p>
-      </header>
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={<Layout />}
+      >
+        <Route
+          index
+          element={<ReadingNow />}
+        />
+      </Route>
+    </Routes>
   );
 };
 
