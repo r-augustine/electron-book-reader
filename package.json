@@ -55,6 +55,7 @@
     "@types/react-dom": "^18.0.6",
     "@typescript-eslint/parser": "^5.36.1",
     "electron-updater": "5.2.1",
+    "epubjs": "^0.3.93",
     "eslint-config-prettier": "^8.5.0",
     "framer-motion": "^7.2.1",
     "nanoid": "^4.0.0",

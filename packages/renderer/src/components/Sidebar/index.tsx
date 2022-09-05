@@ -1,5 +1,15 @@
 import React from 'react';
-import { VStack, Heading, Text, Icon } from '@chakra-ui/react';
+import {
+  VStack,
+  Heading,
+  Text,
+  Icon,
+  Box,
+  HStack,
+  Input,
+  InputGroup,
+  InputLeftElement,
+} from '@chakra-ui/react';
 import { NavLink } from 'react-router-dom';
 import { nanoid } from 'nanoid';
 import {
@@ -9,6 +19,7 @@ import {
   IoDocumentTextOutline,
   IoCheckmarkCircleOutline,
   IoReorderFourOutline,
+  IoSearchOutline,
 } from 'react-icons/io5';
 import { type IconType } from 'react-icons/lib';
 import './index.scss';
@@ -73,14 +84,28 @@ const MenuHeader = ({ content }: MenuHeaderProps) => {
 const Sidebar = () => {
   return (
     <VStack
-      w="200px"
+      w="210px"
       h="full"
       p={4}
       spacing={6}
       alignItems="stretch"
       direction="column"
+      minW="210px"
       as="nav"
     >
+      <InputGroup>
+        <InputLeftElement
+          pointerEvents="none"
+          height="100%"
+          children={<Icon as={IoSearchOutline} />}
+        />
+        <Input
+          type="text"
+          size="sm"
+          placeholder="Search"
+          variant="filled"
+        />
+      </InputGroup>
       {menu.map(item => (
         <VStack
           spacing={2}
@@ -121,6 +146,25 @@ const Sidebar = () => {
           </VStack>
         </VStack>
       ))}
+      <HStack sx={{ marginTop: 'auto !important' }}>
+        <Box
+          borderRadius="50%"
+          w="35px"
+          h="35px"
+          bg="gray.600"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          R
+        </Box>
+        <Heading
+          as="h6"
+          size="xs"
+        >
+          Ricardo Augustine
+        </Heading>
+      </HStack>
     </VStack>
   );
 };

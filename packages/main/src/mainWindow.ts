@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { URL } from 'url';
 
@@ -62,4 +62,9 @@ export async function restoreOrCreateWindow() {
   }
 
   window.focus();
+
+  ipcMain.handle('getBooksPath', () => {
+    const _path = join(__dirname, '../', '../', 'renderer', 'assets', 'tester.epub');
+    return _path;
+  });
 }
