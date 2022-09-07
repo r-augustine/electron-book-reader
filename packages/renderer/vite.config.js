@@ -1,8 +1,8 @@
 /* eslint-env node */
 
-import {chrome} from '../../.electron-vendors.cache.json';
-import {join} from 'path';
-import {renderer} from 'unplugin-auto-expose';
+import { chrome } from '../../.electron-vendors.cache.json';
+import { join } from 'path';
+import { renderer } from 'unplugin-auto-expose';
 import react from '@vitejs/plugin-react';
 
 const PACKAGE_ROOT = __dirname;
