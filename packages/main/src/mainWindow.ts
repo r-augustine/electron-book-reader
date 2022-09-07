@@ -1,6 +1,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { URL } from 'url';
+import { mkdir, access, constants } from 'node:fs/promises';
+import extract from 'extract-zip';
+import { XMLParser } from 'fast-xml-parser';
+import { readFile } from 'fs/promises';
 
 async function createWindow() {
   const browserWindow = new BrowserWindow({
@@ -63,8 +67,108 @@ export async function restoreOrCreateWindow() {
 
   window.focus();
 
+  const basePath = join(__dirname, '../', '../', 'renderer', 'assets');
+  const epubPath = join(basePath, 'sample.epub');
+  const bookPath = join(basePath, 'sample');
+  await addBook(epubPath, bookPath);
+
+  // after extracting the book
+  // check if the file exists first
+  // parse META-INF/container.xml and find the rootfile
+  const root = await getRootFilePath(bookPath);
+  console.log(JSON.stringify(root, null, 2));
+
   ipcMain.handle('getBooksPath', () => {
     const _path = join(__dirname, '../', '../', 'renderer', 'assets', 'tester.epub');
     return _path;
   });
+}
+
+// async function() {
+
+// }
+
+/**
+ * Finds the location of the root file
+ * @param bookPath string The location of the extracted EPUB
+ * @returns string
+ */
+async function getRootFilePath(bookPath: string) {
+  if (!(await dirExists(bookPath))) {
+    throw new Error('book does not exist');
+  }
+
+  const containerFilePath = join(bookPath, 'META-INF/container.xml');
+
+  if (!(await dirExists(containerFilePath))) {
+    throw new Error('Invalid EPUB format');
+  }
+
+  const containerXml = await readFile(containerFilePath, { encoding: 'utf-8' });
+  const xmlObj = parseXml(containerXml);
+  console.log(xmlObj?.container);
+
+  if (!xmlObj.container?.rootfiles?.rootfile?.['full-path']) {
+    throw new Error('Invalid EPUB format');
+  }
+
+  return xmlObj.container.rootfiles.rootfile['full-path'];
+}
+
+function parseXml(data: string) {
+  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+  const xmlString = parser.parse(data);
+  return xmlString;
+}
+
+/**
+ * Add a book to the application
+ * @param epubPath string The location of the epub file
+ * @param bookPath string The destination to save the extracted epub
+ * @returns
+ */
+async function addBook(epubPath: string, bookPath: string) {
+  if (await dirExists(bookPath)) {
+    // throw new Error("Book already exists");
+    console.log('the book already exists');
+    return -1;
+  }
+
+  // create directory to hold files
+  await createDir(bookPath);
+
+  // upzip files
+  await unzipEpub(epubPath, bookPath);
+}
+
+async function createDir(dir: string) {
+  console.log('creating the folder');
+  await mkdir(dir);
+}
+
+/**
+ * Checks if a directory exists
+ * @param dir string Path
+ * @returns
+ */
+async function dirExists(dir: string) {
+  try {
+    await access(dir, constants.R_OK | constants.W_OK);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Unzips epub files
+ * @param epubPath string The location of the epub file
+ * @param bookPath string The destination to save the extracted epub
+ */
+async function unzipEpub(epubPath: string, bookPath: string) {
+  try {
+    await extract(epubPath, { dir: bookPath });
+  } catch (error) {
+    console.log('could not extract the files', error);
+  }
 }

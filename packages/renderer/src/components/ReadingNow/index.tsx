@@ -1,5 +1,6 @@
-import { Box, Divider, Heading, HStack, Image, VStack } from '@chakra-ui/react';
 import React from 'react';
+import { Box, Divider, Heading, HStack, Image, VStack } from '@chakra-ui/react';
+// import { motion } from 'framer-motion';
 
 const items = [1, 2, 3, 4, 5, 7, 8, 9];
 
