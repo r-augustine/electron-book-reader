@@ -1,9 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { URL } from 'url';
-import { mkdir, access, constants } from 'node:fs/promises';
+import { mkdir, access } from 'node:fs/promises';
 import extract from 'extract-zip';
-import { XMLParser } from 'fast-xml-parser';
+import { XMLBuilder, type XmlBuilderOptionsOptional, XMLParser } from 'fast-xml-parser';
 import { readFile } from 'fs/promises';
 
 async function createWindow() {
@@ -70,23 +70,42 @@ export async function restoreOrCreateWindow() {
   const basePath = join(__dirname, '../', '../', 'renderer', 'assets');
   const epubPath = join(basePath, 'sample.epub');
   const bookPath = join(basePath, 'sample');
+
   await addBook(epubPath, bookPath);
 
-  // after extracting the book
-  // check if the file exists first
-  // parse META-INF/container.xml and find the rootfile
-  const root = await getRootFilePath(bookPath);
-  console.log(JSON.stringify(root, null, 2));
+  //   all you need to know is the first chapter of the book
+  // itemref/spine is the table of contents ids are related to items
+  // items container the path of the xml file to load
+  // scan loaded xml files for css and load all css files dynamically
+  // add animations after
 
   ipcMain.handle('getBooksPath', () => {
     const _path = join(__dirname, '../', '../', 'renderer', 'assets', 'tester.epub');
     return _path;
   });
+
+  ipcMain.handle('openBook', async () => {
+    return await openBook(bookPath);
+  });
+
+  ipcMain.handle('getItem', async (event, href: string) => {
+    const options = {
+      ignoreAttributes: false,
+      preserveOrder: true,
+      unpairedTags: ['br', 'hr', 'link', 'meta'],
+      stopNodes: ['*.pre', '*.script'],
+      processEntities: true,
+      htmlEntities: true,
+    };
+    parseXml(href, options);
+  });
 }
 
-// async function() {
-
-// }
+async function getRootFile(rootPath: string) {
+  const rootXml = await readFile(rootPath, { encoding: 'utf-8' });
+  const rootXmlObj = parseXml(rootXml);
+  return rootXmlObj;
+}
 
 /**
  * Finds the location of the root file
@@ -106,19 +125,60 @@ async function getRootFilePath(bookPath: string) {
 
   const containerXml = await readFile(containerFilePath, { encoding: 'utf-8' });
   const xmlObj = parseXml(containerXml);
-  console.log(xmlObj?.container);
 
   if (!xmlObj.container?.rootfiles?.rootfile?.['full-path']) {
     throw new Error('Invalid EPUB format');
   }
 
-  return xmlObj.container.rootfiles.rootfile['full-path'];
+  const path = xmlObj.container.rootfiles.rootfile['full-path'];
+  const rootPath = join(bookPath, path.split('/').slice(0, -1).join('/'));
+  const rootFilePath = join(bookPath, path);
+
+  return { rootPath, rootFilePath };
 }
 
-function parseXml(data: string) {
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+function buildXml(data: object, options: XmlBuilderOptionsOptional = {}) {
+  const builder = new XMLBuilder(options);
+  return builder.build(data);
+}
+
+function buildHTML(
+  data: object,
+  options = {
+    attributeNamePrefix: '@',
+    ignoreAttributes: false,
+    format: true,
+    preserveOrder: true,
+    suppressEmptyNode: true,
+    unpairedTags: ['hr', 'br', 'link', 'meta'],
+    stopNodes: ['*.pre', '*.script'],
+  },
+) {
+  return buildXml(data, options);
+}
+
+function parseXml(data: string, options = {}) {
+  const defaultOptions = { ignoreAttributes: false, attributeNamePrefix: '' };
+  options = Object.assign({}, defaultOptions, options);
+  const parser = new XMLParser(options);
   const xmlString = parser.parse(data);
   return xmlString;
+}
+
+function parseHTML(data: string, options = {}) {
+  const defaultOptions = {
+    attributeNamePrefix: '@',
+    ignoreAttributes: false,
+    preserveOrder: true,
+    unpairedTags: ['hr', 'br', 'link', 'meta'],
+    stopNodes: ['*.pre', '*.script'],
+    processEntities: true,
+    htmlEntities: true,
+  };
+
+  options = Object.assign({}, defaultOptions, options);
+
+  return parseXml(data, options);
 }
 
 /**
@@ -129,7 +189,7 @@ function parseXml(data: string) {
  */
 async function addBook(epubPath: string, bookPath: string) {
   if (await dirExists(bookPath)) {
-    // throw new Error("Book already exists");
+    // if the boox already exists, open the book
     console.log('the book already exists');
     return -1;
   }
@@ -139,6 +199,55 @@ async function addBook(epubPath: string, bookPath: string) {
 
   // upzip files
   await unzipEpub(epubPath, bookPath);
+
+  // verify if the EPUB is valid
+
+  // throw error is not valid
+}
+
+async function openBook(bookPath: string) {
+  // parse META-INF/container.xml and find the root file path
+  const { rootPath, rootFilePath } = await getRootFilePath(bookPath);
+
+  // get the root file object
+  const rootFile = await getRootFile(rootFilePath);
+
+  // console.log(rootFile.package.manifest.item);
+
+  // get chapters html
+  const chapters = await getChapters(rootFile.package.manifest.item, rootPath);
+
+  // replace chapters
+  rootFile.package.manifest.item = chapters;
+
+  // return the root file
+  return { ...rootFile.package, path: rootPath };
+}
+
+interface Chapter {
+  id: string;
+  href: string;
+  'media-type': string;
+}
+async function getChapters(chapters: Chapter[], basePath: string) {
+  const data = [];
+
+  for (const chapter of chapters) {
+    if (chapter['media-type'] === 'application/xhtml+xml') {
+      const path = join(basePath, chapter.href);
+      const htmlRaw = await readFile(path, { encoding: 'utf-8' });
+      const htmlObj = parseHTML(htmlRaw);
+      let html = buildHTML(htmlObj);
+      html = html.replace(/css\//g, `${basePath}/css/`);
+      html = html.replace(/images\//g, `${basePath}/images`);
+
+      data.push({ ...chapter, html });
+      continue;
+    }
+    data.push(chapter);
+  }
+
+  return data;
 }
 
 async function createDir(dir: string) {
@@ -153,7 +262,7 @@ async function createDir(dir: string) {
  */
 async function dirExists(dir: string) {
   try {
-    await access(dir, constants.R_OK | constants.W_OK);
+    await access(dir);
     return true;
   } catch (error) {
     return false;

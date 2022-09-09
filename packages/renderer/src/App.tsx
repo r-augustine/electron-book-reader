@@ -3,6 +3,7 @@ import './App.scss';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import ReadingNow from './components/ReadingNow';
+import Reader from './components/Reader';
 
 const App = () => {
   return (
@@ -14,6 +15,10 @@ const App = () => {
         <Route
           index
           element={<ReadingNow />}
+        />
+        <Route
+          path="read"
+          element={<Reader />}
         />
       </Route>
     </Routes>
