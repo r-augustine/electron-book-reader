@@ -227,7 +227,7 @@ async function openBook(bookPath: string) {
   rootFile.package.manifest.item = chapters;
 
   // Find the css values from the root files.
-  // const css = await getCss(rootFile.)
+  const css = await getCss(rootFile.package.manifest.item, rootPath);
 
   // Attach the location of the css files in separate variables.
 
@@ -235,7 +235,7 @@ async function openBook(bookPath: string) {
   // with absolute location.
 
   // return the root file
-  return { ...rootFile.package, path: rootPath };
+  return { ...rootFile.package, css, path: rootPath };
 }
 
 interface Chapter {
@@ -252,8 +252,8 @@ async function getChapters(chapters: Chapter[], basePath: string) {
       const path = join(basePath, chapter.href);
       const htmlRaw = await readFile(path, { encoding: 'utf-8' });
       const htmlObj = parseHTML(htmlRaw);
-      // console.log(JSON.stringify(htmlObj, null, 2));
       let html = buildHTML(htmlObj);
+      html = html.replace(/<link.*">/g, '');
       html = html.replace(/css\//g, `${basePath}/css/`);
       html = html.replace(/images\//g, `${basePath}/images`);
 
@@ -264,6 +264,22 @@ async function getChapters(chapters: Chapter[], basePath: string) {
   }
 
   return data;
+}
+
+/**
+ *
+ * @param chapters Chapter[]
+ * @param basePath string
+ * @returns string[] | null
+ */
+async function getCss(chapters: Chapter[], basePath = '') {
+  const css = chapters.filter(c => c['media-type'] === 'text/css');
+
+  if (css.length !== 0) {
+    return css.map(c => join(basePath, c.href));
+  }
+
+  return [];
 }
 
 async function createDir(dir: string) {

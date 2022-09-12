@@ -1,7 +1,8 @@
 import { Box, Portal } from '@chakra-ui/react';
-import React, { useEffect, useReducer } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useImmerReducer } from 'use-immer';
+import { decode } from 'html-entities';
 
 interface Item {
   id: string;
@@ -12,6 +13,7 @@ interface Item {
 
 interface Book {
   metadata: object;
+  css: string[];
   manifest: {
     item: Array<Item>;
   };
@@ -61,11 +63,11 @@ const Reader = () => {
     navigate('/');
   };
 
-  // useEffect(() => {
-  //   console.log(book);
-  //   console.log(book.currentPageID);
-  //   console.log(currentPage);
-  // }, []);
+  useEffect(() => {
+    console.log(book);
+    console.log(book.currentPageID);
+    console.log(book.manifest.item.find(b => b.id === currentPage)?.html);
+  }, [currentPage]);
 
   return (
     <Portal>
@@ -74,8 +76,9 @@ const Reader = () => {
           position: 'absolute',
           left: 0,
           top: 0,
-          right: 0,
-          bottom: 0,
+          width: '100%',
+          minHeight: '100%',
+          padding: '2em',
           zIndex: 999,
           background: 'gray.800',
         }}
@@ -83,9 +86,22 @@ const Reader = () => {
         <button onClick={goBack}>Go Back</button>
         <button onClick={previous}>Previous</button>
         <button onClick={next}>Next</button>
+        {book.css.map(c => (
+          <link
+            key={c}
+            rel="stylesheet"
+            href={c}
+            type="text/css"
+          />
+        ))}
         {pages.map(v => {
           if (v.id === currentPage) {
-            return <div dangerouslySetInnerHTML={{ __html: v.html }}></div>;
+            return (
+              <div
+                key={v.id}
+                dangerouslySetInnerHTML={{ __html: decode(v.html) }}
+              ></div>
+            );
           }
 
           return null;
