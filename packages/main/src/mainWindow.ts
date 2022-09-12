@@ -9,6 +9,8 @@ import { readFile } from 'fs/promises';
 async function createWindow() {
   const browserWindow = new BrowserWindow({
     // show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
+    width: 1600,
+    height: 800,
     vibrancy: 'under-window',
     visualEffectState: 'active',
     webPreferences: {
@@ -32,7 +34,7 @@ async function createWindow() {
     browserWindow?.show();
 
     if (import.meta.env.DEV) {
-      browserWindow?.webContents.openDevTools();
+      //browserWindow?.webContents.openDevTools();
     }
   });
 
@@ -120,6 +122,7 @@ async function getRootFilePath(bookPath: string) {
   const containerFilePath = join(bookPath, 'META-INF/container.xml');
 
   if (!(await dirExists(containerFilePath))) {
+    // show notification
     throw new Error('Invalid EPUB format');
   }
 
@@ -205,6 +208,11 @@ async function addBook(epubPath: string, bookPath: string) {
   // throw error is not valid
 }
 
+/**
+ * Returns book object
+ * @param bookPath string
+ * @returns object
+ */
 async function openBook(bookPath: string) {
   // parse META-INF/container.xml and find the root file path
   const { rootPath, rootFilePath } = await getRootFilePath(bookPath);
@@ -212,13 +220,19 @@ async function openBook(bookPath: string) {
   // get the root file object
   const rootFile = await getRootFile(rootFilePath);
 
-  // console.log(rootFile.package.manifest.item);
-
   // get chapters html
   const chapters = await getChapters(rootFile.package.manifest.item, rootPath);
 
   // replace chapters
   rootFile.package.manifest.item = chapters;
+
+  // Find the css values from the root files.
+  // const css = await getCss(rootFile.)
+
+  // Attach the location of the css files in separate variables.
+
+  // Find the relative location of the images folder and replace
+  // with absolute location.
 
   // return the root file
   return { ...rootFile.package, path: rootPath };
@@ -229,6 +243,7 @@ interface Chapter {
   href: string;
   'media-type': string;
 }
+
 async function getChapters(chapters: Chapter[], basePath: string) {
   const data = [];
 
@@ -237,6 +252,7 @@ async function getChapters(chapters: Chapter[], basePath: string) {
       const path = join(basePath, chapter.href);
       const htmlRaw = await readFile(path, { encoding: 'utf-8' });
       const htmlObj = parseHTML(htmlRaw);
+      // console.log(JSON.stringify(htmlObj, null, 2));
       let html = buildHTML(htmlObj);
       html = html.replace(/css\//g, `${basePath}/css/`);
       html = html.replace(/images\//g, `${basePath}/images`);

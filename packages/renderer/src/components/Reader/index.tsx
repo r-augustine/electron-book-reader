@@ -1,8 +1,10 @@
 import { Box, Portal } from '@chakra-ui/react';
 import React, { useEffect, useReducer } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useImmerReducer } from 'use-immer';
 
 interface Item {
+  id: string;
   href: string;
   html: string;
   'media-type': string;
@@ -23,6 +25,12 @@ interface Book {
 // need to use immmer for deeply nested states
 const readerReducer = (state: Book, action: { type: string; payload?: object }): Book => {
   switch (action.type) {
+    case 'next':
+      state.currentPageID = Math.min(state.currentPageID + 1, state.spine.itemref.length);
+      return state;
+    case 'previous':
+      state.currentPageID = Math.max(state.currentPageID - 1, 0);
+      return state;
     default:
       return state;
   }
@@ -35,25 +43,29 @@ const init = (book: Book) => {
 const Reader = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [book, dispatch] = useReducer(readerReducer, location.state as Book, init);
-  const currentPage =
-    book.manifest.item.find((v, i) => i === book.currentPageID)?.html ?? 'Not Found';
-
-  console.log(currentPage);
+  const [book, dispatch] = useImmerReducer(readerReducer, location.state as Book, init);
+  const pages = book.manifest.item.filter(v => v['media-type'].includes('xhtml'));
+  const currentPage = book.manifest.item.find(
+    v => v.id === book.spine.itemref[book.currentPageID].idref,
+  )?.id;
 
   const next = () => {
-    dispatch({ type: 'NEXT' });
+    dispatch({ type: 'next' });
+  };
+
+  const previous = () => {
+    dispatch({ type: 'previous' });
   };
 
   const goBack = () => {
     navigate('/');
   };
 
-  useEffect(() => {
-    console.log(book);
-    console.log(book.currentPageID);
-    console.log();
-  }, []);
+  // useEffect(() => {
+  //   console.log(book);
+  //   console.log(book.currentPageID);
+  //   console.log(currentPage);
+  // }, []);
 
   return (
     <Portal>
@@ -69,12 +81,15 @@ const Reader = () => {
         }}
       >
         <button onClick={goBack}>Go Back</button>
+        <button onClick={previous}>Previous</button>
         <button onClick={next}>Next</button>
-        <div
-          dangerouslySetInnerHTML={{
-            __html: currentPage,
-          }}
-        />
+        {pages.map(v => {
+          if (v.id === currentPage) {
+            return <div dangerouslySetInnerHTML={{ __html: v.html }}></div>;
+          }
+
+          return null;
+        })}
       </Box>
     </Portal>
   );
