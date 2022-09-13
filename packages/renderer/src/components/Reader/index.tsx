@@ -77,8 +77,8 @@ const Reader = () => {
           left: 0,
           top: 0,
           width: '100%',
+          height: '100%',
           minHeight: '100%',
-          padding: '2em',
           zIndex: 999,
           background: 'gray.800',
         }}
@@ -99,6 +99,14 @@ const Reader = () => {
             return (
               <div
                 key={v.id}
+                style={{
+                  columnCount: 2,
+                  columnGap: '5em',
+                  padding: '2em',
+                  columnFill: 'auto',
+                  fontSize: '15px',
+                  minHeight: '100%',
+                }}
                 dangerouslySetInnerHTML={{ __html: decode(v.html) }}
               ></div>
             );
